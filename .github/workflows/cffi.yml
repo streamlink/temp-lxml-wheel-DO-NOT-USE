@@ -13,20 +13,20 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
-      - name: Checkout
-        run: |
-          hg clone --rev 3c41b86ccd01345af1c59294e3a9899ba2b31e9f https://foss.heptapod.net/pypy/cffi .
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
         with:
-          python-version: "3.12-dev"
+          repository: python-cffi/cffi
+          ref: d7f750b1b1c5ea4da5aa537b9baba0e01b0ce843
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13-dev"
       - name: Install python deps
         run: |
           python -m pip install -U pip build wheel
-          python -m pip install -U -r requirements.txt
       - name: Build cffi wheel
         run: |
           python -m build --outdir dist --wheel
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}
           path: ./dist/*.whl
@@ -39,10 +39,10 @@ jobs:
       contents: write
     steps:
       - run: mkdir dist
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           path: ./dist
       - name: Release
-        uses: ncipollo/release-action@eb05307dcee34deaad054e98128088a30d7980dc
+        uses: ncipollo/release-action@1cbdc80532ba923d3d81ebd1cece305c437b8d66
         with:
           artifacts: dist/**/*.whl
