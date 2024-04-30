@@ -1,0 +1,65 @@
+name: Build lxml wheel
+
+on:
+  push: {}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-2019
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: lxml/lxml
+          ref: a9f31d9ba0f6db7b0c6576b4b9014a4ea7649eca
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13-dev"
+      - name: Install python deps
+        run: |
+          pip install -U cython setuptools wheel
+      - name: Build lxml wheel
+        shell: bash
+        run: >
+          STATIC_DEPS=true
+          WITH_CYTHON=true
+          CFLAGS="-fPIC"
+          LDFLAGS="-fPIC"
+          LIBXML2_VERSION=2.12.6
+          LIBXSLT_VERSION=1.1.39
+          MULTICORE=2
+          pip wheel
+          -w dist
+          -vvv
+          .
+      - name: Validate built wheel
+        shell: bash
+        run: |
+          pip install ./dist/lxml-*.whl
+          python -c 'import lxml.etree;[print(f"lxml.etree.{k} == {getattr(lxml.etree,k)}") for k in ["__version__","LIBXML_VERSION","LIBXSLT_VERSION"]]'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}
+          path: ./dist/lxml-*.whl
+  deploy:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - run: mkdir dist
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./dist
+      - name: Release
+        uses: ncipollo/release-action@1cbdc80532ba923d3d81ebd1cece305c437b8d66
+        with:
+          artifacts: dist/**/*.whl
